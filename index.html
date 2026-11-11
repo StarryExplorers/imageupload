@@ -84,7 +84,18 @@
     }
     .image-card { min-width: 0; overflow: hidden; border-radius: 15px; background: var(--panel-2); border: 1px solid #493b63; }
     .thumb { height: 175px; display: grid; place-items: center; background: #100d19; overflow: hidden; }
-    .thumb img { width: 100%; height: 100%; object-fit: contain; }
+    .preview-button { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+    .thumb img { width: 100%; height: 100%; object-fit: contain; transition: transform .2s ease; }
+    .preview-button:hover img { transform: scale(1.035); }
+    .preview-button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+    .lightbox { display: none; position: fixed; inset: 0; z-index: 1000; padding: 24px; background: #080610ed; align-items: center; justify-content: center; }
+    .lightbox.open { display: flex; }
+    .lightbox-content { position: relative; width: min(100%, 1100px); max-height: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .lightbox-image { display: block; max-width: 100%; max-height: calc(100vh - 120px); object-fit: contain; border-radius: 12px; }
+    .lightbox-caption { max-width: 90%; color: var(--text); text-align: center; overflow-wrap: anywhere; }
+    .lightbox-close { position: absolute; top: -17px; right: -10px; z-index: 2; width: 44px; height: 44px; border: 1px solid #ffffff55; border-radius: 50%; color: white; background: #302641; font-size: 27px; line-height: 1; }
+    .lightbox-close:hover { background: #57416f; }
+    body.modal-open { overflow: hidden; }
     .card-info { padding: 12px; }
     .file-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .9rem; font-weight: 650; }
     .date { color: var(--muted); font-size: .76rem; margin-top: 5px; }
@@ -139,6 +150,13 @@
         <div class="empty">Your shared images will appear here ✨</div>
       </div>
     </section>
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image preview">
+      <div class="lightbox-content">
+        <button class="lightbox-close" id="lightboxClose" type="button" aria-label="Close image preview">×</button>
+        <img class="lightbox-image" id="lightboxImage" alt="">
+        <div class="lightbox-caption" id="lightboxCaption"></div>
+      </div>
+    </div>
     <p class="footer">Images are stored in your Supabase project. Only upload images you have permission to share.<br>Public gallery: uploaded images can be viewed by anyone.</p>
   </main>
 
@@ -161,6 +179,10 @@
     const gallery = document.getElementById("gallery");
     const imageCount = document.getElementById("imageCount");
     const searchInput = document.getElementById("searchInput");
+    const lightbox = document.getElementById("lightbox");
+    const lightboxImage = document.getElementById("lightboxImage");
+    const lightboxCaption = document.getElementById("lightboxCaption");
+    const lightboxClose = document.getElementById("lightboxClose");
 
     let supabaseClient = null;
     let allImages = [];
@@ -173,6 +195,7 @@
     function isConfigured() {
       return SUPABASE_URL !== "your project URL" &&
              SUPABASE_ANON_KEY !== "your key" &&
+             SUPABASE_ANON_KEY !== "my api key place holder hehe" &&
              SUPABASE_URL.startsWith("https://") &&
              SUPABASE_ANON_KEY.length > 20;
     }
@@ -213,12 +236,18 @@
 
         const thumb = document.createElement("div");
         thumb.className = "thumb";
+        const previewButton = document.createElement("button");
+        previewButton.className = "preview-button";
+        previewButton.type = "button";
+        previewButton.setAttribute("aria-label", `View ${item.name || "image"} larger`);
         const img = document.createElement("img");
         img.src = item.image_url;
         img.alt = item.name || "Shared image";
         img.loading = "lazy";
         img.onerror = () => { thumb.textContent = "Preview unavailable"; };
-        thumb.appendChild(img);
+        previewButton.appendChild(img);
+        previewButton.addEventListener("click", () => openLightbox(item));
+        thumb.appendChild(previewButton);
 
         const info = document.createElement("div");
         info.className = "card-info";
@@ -244,6 +273,29 @@
         gallery.appendChild(card);
       });
     }
+
+    function openLightbox(item) {
+      lightboxImage.src = item.image_url;
+      lightboxImage.alt = item.name || "Shared image";
+      lightboxCaption.textContent = item.name || "Shared image";
+      lightbox.classList.add("open");
+      document.body.classList.add("modal-open");
+      lightboxClose.focus();
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove("open");
+      document.body.classList.remove("modal-open");
+      lightboxImage.removeAttribute("src");
+    }
+
+    lightboxClose.addEventListener("click", closeLightbox);
+    lightbox.addEventListener("click", event => {
+      if (event.target === lightbox) closeLightbox();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && lightbox.classList.contains("open")) closeLightbox();
+    });
 
     async function loadImages() {
       if (!supabaseClient && !connectSupabase()) return;
