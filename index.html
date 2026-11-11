@@ -1,426 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#171226">
-  <title>ImageDrop — Share your images</title>
-  <style>
-    :root {
-      --bg: #100d1b;
-      --panel: #1b1629;
-      --panel-2: #241d36;
-      --border: #3d3157;
-      --text: #f7f2ff;
-      --muted: #b8aecb;
-      --accent: #c5a5ff;
-      --accent-dark: #8d69d1;
-      --danger: #ff9eae;
-      font-family: Inter, "Segoe UI", Arial, sans-serif;
-      color-scheme: dark;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; min-height: 100vh; color: var(--text);
-      background:
-        radial-gradient(ellipse at 12% 0%, #39275b 0, transparent 34%),
-        radial-gradient(ellipse at 95% 90%, #2b2048 0, transparent 32%),
-        var(--bg);
-    }
-    button, input { font: inherit; }
-    button { cursor: pointer; }
-    .shell { width: min(1120px, calc(100% - 36px)); margin: 0 auto; padding: 30px 0 55px; }
-    header { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 35px; }
-    .brand { display: flex; align-items: center; gap: 13px; }
-    .logo {
-      display: grid; place-items: center; width: 48px; height: 48px; border-radius: 16px;
-      color: #211633; font-size: 25px; background: linear-gradient(145deg, #e1d1ff, #9872d4);
-      box-shadow: 0 8px 25px #9b75d744;
-    }
-    h1 { margin: 0; font-size: 1.45rem; letter-spacing: -.6px; }
-    .brand p { margin: 3px 0 0; color: var(--muted); font-size: .82rem; }
-    .online { color: #c8b5ed; font-size: .84rem; display: flex; align-items: center; gap: 8px; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #8de0b1; box-shadow: 0 0 12px #8de0b188; }
-    .hero { margin-bottom: 25px; }
-    .hero h2 { font-size: clamp(2rem, 5vw, 3.25rem); letter-spacing: -1.8px; margin: 0 0 9px; }
-    .hero h2 span { color: var(--accent); }
-    .hero p { color: var(--muted); margin: 0; line-height: 1.6; }
-    .panel {
-      border: 1px solid var(--border); border-radius: 23px; padding: 22px;
-      background: #1a1529ed; box-shadow: 0 20px 65px #0004;
-    }
-    .drop {
-      min-height: 205px; border: 2px dashed #705b96; border-radius: 17px;
-      display: flex; flex-direction: column; justify-content: center; align-items: center;
-      text-align: center; padding: 22px; background: #251d37; transition: .2s;
-    }
-    .drop.dragging { border-color: var(--accent); background: #302447; transform: scale(1.005); }
-    .drop-icon { font-size: 38px; margin-bottom: 8px; }
-    .drop h3 { margin: 0 0 7px; font-size: 1.12rem; }
-    .drop p { margin: 0 0 15px; color: var(--muted); font-size: .88rem; }
-    .primary, .secondary, .download {
-      border: 0; border-radius: 11px; padding: 11px 16px; font-weight: 700;
-      transition: transform .15s, filter .15s;
-    }
-    .primary, .download { background: var(--accent); color: #211632; }
-    .secondary { color: var(--text); background: #382d4e; border: 1px solid #55446f; }
-    .primary:hover, .secondary:hover, .download:hover { filter: brightness(1.08); transform: translateY(-1px); }
-    input[type=file] { display: none; }
-    .status { min-height: 23px; margin: 12px 2px 0; color: var(--muted); font-size: .85rem; }
-    .status.error { color: var(--danger); }
-    .status.success { color: #a7e5c0; }
-    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin: 34px 0 16px; flex-wrap: wrap; }
-    .section-head h3 { margin: 0; font-size: 1.2rem; }
-    .tools { display: flex; gap: 9px; align-items: center; }
-    .search {
-      width: min(260px, 48vw); padding: 10px 13px; border-radius: 10px;
-      border: 1px solid var(--border); background: #171224; color: var(--text); outline: none;
-    }
-    .search:focus { border-color: var(--accent-dark); }
-    .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 15px; }
-    .empty {
-      grid-column: 1 / -1; padding: 35px 15px; text-align: center; border: 1px solid var(--border);
-      border-radius: 15px; color: var(--muted); background: #171224;
-    }
-    .image-card { min-width: 0; overflow: hidden; border-radius: 15px; background: var(--panel-2); border: 1px solid #493b63; }
-    .thumb { height: 175px; display: grid; place-items: center; background: #100d19; overflow: hidden; }
-    .preview-button { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
-    .thumb img { width: 100%; height: 100%; object-fit: contain; transition: transform .2s ease; }
-    .preview-button:hover img { transform: scale(1.035); }
-    .preview-button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
-    .lightbox { display: none; position: fixed; inset: 0; z-index: 1000; padding: 24px; background: #080610ed; align-items: center; justify-content: center; }
-    .lightbox.open { display: flex; }
-    .lightbox-content { position: relative; width: min(100%, 1100px); max-height: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-    .lightbox-image { display: block; max-width: 100%; max-height: calc(100vh - 120px); object-fit: contain; border-radius: 12px; }
-    .lightbox-caption { max-width: 90%; color: var(--text); text-align: center; overflow-wrap: anywhere; }
-    .lightbox-close { position: absolute; top: -17px; right: -10px; z-index: 2; width: 44px; height: 44px; border: 1px solid #ffffff55; border-radius: 50%; color: white; background: #302641; font-size: 27px; line-height: 1; }
-    .lightbox-close:hover { background: #57416f; }
-    body.modal-open { overflow: hidden; }
-    .card-info { padding: 12px; }
-    .file-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .9rem; font-weight: 650; }
-    .date { color: var(--muted); font-size: .76rem; margin-top: 5px; }
-    .download { width: 100%; margin-top: 11px; padding: 9px; }
-    .footer { text-align: center; color: var(--muted); font-size: .8rem; line-height: 1.6; margin: 22px 8px 0; }
-    @media (max-width: 600px) {
-      .shell { width: min(100% - 24px, 1120px); padding-top: 20px; }
-      header { margin-bottom: 27px; }
-      .online { font-size: .75rem; }
-      .panel { padding: 13px; }
-      .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-      .thumb { height: 130px; }
-      .section-head { align-items: stretch; }
-      .tools { width: 100%; }
-      .search { width: 100%; }
-    }
-  </style>
-</head>
-<body>
-  <main class="shell">
-    <header>
-      <div class="brand">
-        <div class="logo" aria-hidden="true">✧</div>
-        <div><h1>ImageDrop</h1><p>A little home for shared images</p></div>
-      </div>
-      <div class="online"><span class="dot"></span> Shared gallery</div>
-    </header>
-
-    <section class="hero">
-      <h2>Images worth <span>sharing.</span></h2>
-      <p>Upload an image and it can appear in the gallery for everyone to discover.</p>
-    </section>
-
-    <section class="panel">
-      <div class="drop" id="dropZone">
-        <div class="drop-icon" aria-hidden="true">☁️</div>
-        <h3>Drop images here</h3>
-        <p>Choose image files from your device · Maximum 8 MB each</p>
-        <button class="primary" id="chooseButton" type="button">Choose images</button>
-        <input id="fileInput" type="file" accept="image/*" multiple>
-      </div>
-      <div class="status" id="status" role="status" aria-live="polite">Connect your Supabase project to start sharing.</div>
-
-      <div class="section-head">
-        <h3>Community gallery <span id="imageCount" style="color:var(--muted);font-size:.85rem;font-weight:400"></span></h3>
-        <div class="tools">
-          <input class="search" id="searchInput" type="search" placeholder="Search image names…" aria-label="Search image names">
-          <button class="secondary" id="refreshButton" type="button">↻ Refresh</button>
-        </div>
-      </div>
-      <div class="gallery" id="gallery">
-        <div class="empty">Your shared images will appear here ✨</div>
-      </div>
-    </section>
-    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image preview">
-      <div class="lightbox-content">
-        <button class="lightbox-close" id="lightboxClose" type="button" aria-label="Close image preview">×</button>
-        <img class="lightbox-image" id="lightboxImage" alt="">
-        <div class="lightbox-caption" id="lightboxCaption"></div>
-      </div>
-    </div>
-    <p class="footer">Images are stored in your Supabase project. Only upload images you have permission to share.<br>Public gallery: uploaded images can be viewed by anyone.</p>
-  </main>
-
-  <!-- Supabase client library -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    // 1) Replace these two placeholders with your Supabase project details.
-    const SUPABASE_URL = "https://ahnkdsxjvseseleedvwx.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_KW9o_6CMnDW4BzhPRRRjOg_PqZ2tZkt";
-
-    // 2) This must match the name of the public Storage bucket you create in Supabase.
-    const BUCKET_NAME = "images";
-
-    // Keep this in sync with the upload limit configured in Supabase.
-    const MAX_FILE_SIZE = 8 * 1024 * 1024;
-
-    const statusBox = document.getElementById("status");
-    const fileInput = document.getElementById("fileInput");
-    const dropZone = document.getElementById("dropZone");
-    const gallery = document.getElementById("gallery");
-    const imageCount = document.getElementById("imageCount");
-    const searchInput = document.getElementById("searchInput");
-    const lightbox = document.getElementById("lightbox");
-    const lightboxImage = document.getElementById("lightboxImage");
-    const lightboxCaption = document.getElementById("lightboxCaption");
-    const lightboxClose = document.getElementById("lightboxClose");
-
-    let supabaseClient = null;
-    let allImages = [];
-
-    function setStatus(message, type = "") {
-      statusBox.textContent = message;
-      statusBox.className = "status" + (type ? " " + type : "");
-    }
-
-    function isConfigured() {
-      return SUPABASE_URL !== "your project URL" &&
-             SUPABASE_ANON_KEY !== "your key" &&
-             SUPABASE_ANON_KEY !== "my api key place holder hehe" &&
-             SUPABASE_URL.startsWith("https://") &&
-             SUPABASE_ANON_KEY.length > 20;
-    }
-
-    function connectSupabase() {
-      if (!window.supabase) {
-        setStatus("The Supabase library could not load. Check your internet connection.", "error");
-        return false;
-      }
-      if (!isConfigured()) {
-        setStatus("First, replace the Supabase URL and key placeholders in this HTML file.", "error");
-        return false;
-      }
-      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      return true;
-    }
-
-    function escapeText(value) {
-      return String(value).replace(/[&<>"']/g, char => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-      })[char]);
-    }
-
-    function renderGallery() {
-      const query = searchInput.value.trim().toLowerCase();
-      const visible = allImages.filter(item => (item.name || "").toLowerCase().includes(query));
-      imageCount.textContent = `(${allImages.length})`;
-      gallery.innerHTML = "";
-
-      if (!visible.length) {
-        gallery.innerHTML = `<div class="empty">${query ? "No images match your search." : "No images yet. Be the first to upload one! ✨"}</div>`;
-        return;
-      }
-
-      visible.forEach(item => {
-        const card = document.createElement("article");
-        card.className = "image-card";
-
-        const thumb = document.createElement("div");
-        thumb.className = "thumb";
-        const previewButton = document.createElement("button");
-        previewButton.className = "preview-button";
-        previewButton.type = "button";
-        previewButton.setAttribute("aria-label", `View ${item.name || "image"} larger`);
-        const img = document.createElement("img");
-        img.src = item.image_url;
-        img.alt = item.name || "Shared image";
-        img.loading = "lazy";
-        img.onerror = () => { thumb.textContent = "Preview unavailable"; };
-        previewButton.appendChild(img);
-        previewButton.addEventListener("click", () => openLightbox(item));
-        thumb.appendChild(previewButton);
-
-        const info = document.createElement("div");
-        info.className = "card-info";
-        const name = document.createElement("div");
-        name.className = "file-name";
-        name.textContent = item.name || "Untitled image";
-        name.title = item.name || "";
-
-        const date = document.createElement("div");
-        date.className = "date";
-        date.textContent = item.created_at
-          ? new Date(item.created_at).toLocaleString()
-          : "Shared image";
-
-        const download = document.createElement("button");
-        download.className = "download";
-        download.type = "button";
-        download.textContent = "⬇ Download";
-        download.addEventListener("click", () => downloadImage(item.image_url, item.name));
-
-        info.append(name, date, download);
-        card.append(thumb, info);
-        gallery.appendChild(card);
-      });
-    }
-
-    function openLightbox(item) {
-      lightboxImage.src = item.image_url;
-      lightboxImage.alt = item.name || "Shared image";
-      lightboxCaption.textContent = item.name || "Shared image";
-      lightbox.classList.add("open");
-      document.body.classList.add("modal-open");
-      lightboxClose.focus();
-    }
-
-    function closeLightbox() {
-      lightbox.classList.remove("open");
-      document.body.classList.remove("modal-open");
-      lightboxImage.removeAttribute("src");
-    }
-
-    lightboxClose.addEventListener("click", closeLightbox);
-    lightbox.addEventListener("click", event => {
-      if (event.target === lightbox) closeLightbox();
-    });
-    document.addEventListener("keydown", event => {
-      if (event.key === "Escape" && lightbox.classList.contains("open")) closeLightbox();
-    });
-
-    async function loadImages() {
-      if (!supabaseClient && !connectSupabase()) return;
-      setStatus("Loading the shared gallery…");
-      const { data, error } = await supabaseClient
-        .from("images")
-        .select("id, name, image_url, created_at")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error(error);
-        setStatus("Could not load images: " + error.message, "error");
-        return;
-      }
-      allImages = data || [];
-      renderGallery();
-      setStatus(`Gallery loaded. ${allImages.length} image${allImages.length === 1 ? "" : "s"} available.`, "success");
-    }
-
-    async function uploadFiles(fileList) {
-      if (!supabaseClient && !connectSupabase()) return;
-      const files = Array.from(fileList);
-      if (!files.length) return;
-
-      const validFiles = files.filter(file => {
-        if (!file.type.startsWith("image/")) {
-          setStatus(`${file.name} isn't an image file, so it was skipped.`, "error");
-          return false;
-        }
-        if (file.size > MAX_FILE_SIZE) {
-          setStatus(`${file.name} is larger than 8 MB, so it was skipped.`, "error");
-          return false;
-        }
-        return true;
-      });
-
-      if (!validFiles.length) return;
-
-      let uploaded = 0;
-      for (const file of validFiles) {
-        setStatus(`Uploading ${file.name} (${uploaded + 1} of ${validFiles.length})…`);
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const filePath = `${crypto.randomUUID()}-${safeName}`;
-
-        const { error: uploadError } = await supabaseClient.storage
-          .from(BUCKET_NAME)
-          .upload(filePath, file, {
-            cacheControl: "3600",
-            upsert: false,
-            contentType: file.type
-          });
-
-        if (uploadError) {
-          console.error(uploadError);
-          setStatus(`Upload failed for ${file.name}: ${uploadError.message}`, "error");
-          continue;
-        }
-
-        const { data: publicData } = supabaseClient.storage
-          .from(BUCKET_NAME)
-          .getPublicUrl(filePath);
-
-        const { error: insertError } = await supabaseClient
-          .from("images")
-          .insert({
-            name: file.name,
-            image_url: publicData.publicUrl
-          });
-
-        if (insertError) {
-          console.error(insertError);
-          setStatus(`The file uploaded, but its gallery record could not be saved: ${insertError.message}`, "error");
-          continue;
-        }
-        uploaded++;
-      }
-
-      fileInput.value = "";
-      await loadImages();
-      if (uploaded > 0) setStatus(`Finished! ${uploaded} image${uploaded === 1 ? "" : "s"} uploaded successfully.`, "success");
-    }
-
-    async function downloadImage(url, filename) {
-      try {
-        setStatus(`Preparing ${filename || "image"} for download…`);
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("The image could not be downloaded.");
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = objectUrl;
-        link.download = filename || "imagedrop-image";
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(objectUrl);
-        setStatus("Download started.", "success");
-      } catch (error) {
-        console.error(error);
-        // Fallback: open the public image in a new tab if the browser blocks cross-origin download.
-        window.open(url, "_blank", "noopener");
-        setStatus("Opened the image in a new tab. You can save it from there.", "error");
-      }
-    }
-
-    document.getElementById("chooseButton").addEventListener("click", () => fileInput.click());
-    fileInput.addEventListener("change", event => uploadFiles(event.target.files));
-    document.getElementById("refreshButton").addEventListener("click", loadImages);
-    searchInput.addEventListener("input", renderGallery);
-
-    ["dragenter", "dragover"].forEach(eventName => {
-      dropZone.addEventListener(eventName, event => {
-        event.preventDefault();
-        dropZone.classList.add("dragging");
-      });
-    });
-    ["dragleave", "drop"].forEach(eventName => {
-      dropZone.addEventListener(eventName, event => {
-        event.preventDefault();
-        dropZone.classList.remove("dragging");
-      });
-    });
-    dropZone.addEventListener("drop", event => uploadFiles(event.dataTransfer.files));
-
-    if (connectSupabase()) loadImages();
-  </script>
-</body>
-</html>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#171226"><title>ImageDrop — Share your images</title>
+<style>
+:root{--bg:#100d1b;--panel:#1b1629;--panel-2:#241d36;--border:#3d3157;--text:#f7f2ff;--muted:#b8aecb;--accent:#c5a5ff;--accent-dark:#8d69d1;--danger:#ff9eae;font-family:Inter,"Segoe UI",Arial,sans-serif;color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;color:var(--text);background:radial-gradient(ellipse at 12% 0%,#39275b 0,transparent 34%),radial-gradient(ellipse at 95% 90%,#2b2048 0,transparent 32%),var(--bg)}button,input{font:inherit}button{cursor:pointer}.shell{width:min(1120px,calc(100% - 36px));margin:0 auto;padding:30px 0 55px}header{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:35px}.brand{display:flex;align-items:center;gap:13px}.logo{display:grid;place-items:center;width:48px;height:48px;border-radius:16px;color:#211633;font-size:25px;background:linear-gradient(145deg,#e1d1ff,#9872d4);box-shadow:0 8px 25px #9b75d744}h1{margin:0;font-size:1.45rem;letter-spacing:-.6px}.brand p{margin:3px 0 0;color:var(--muted);font-size:.82rem}.online{color:#c8b5ed;font-size:.84rem;display:flex;align-items:center;gap:8px}.dot{width:8px;height:8px;border-radius:50%;background:#8de0b1;box-shadow:0 0 12px #8de0b188}.hero{margin-bottom:25px}.hero h2{font-size:clamp(2rem,5vw,3.25rem);letter-spacing:-1.8px;margin:0 0 9px}.hero h2 span{color:var(--accent)}.hero p{color:var(--muted);margin:0;line-height:1.6}.panel{border:1px solid var(--border);border-radius:23px;padding:22px;background:#1a1529ed;box-shadow:0 20px 65px #0004}.drop{min-height:205px;border:2px dashed #705b96;border-radius:17px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:22px;background:#251d37;transition:.2s}.drop.dragging{border-color:var(--accent);background:#302447;transform:scale(1.005)}.drop-icon{font-size:38px;margin-bottom:8px}.drop h3{margin:0 0 7px;font-size:1.12rem}.drop p{margin:0 0 15px;color:var(--muted);font-size:.88rem}.primary,.secondary,.download{border:0;border-radius:11px;padding:11px 16px;font-weight:700;transition:transform .15s,filter .15s}.primary,.download{background:var(--accent);color:#211632}.secondary{color:var(--text);background:#382d4e;border:1px solid #55446f}.primary:hover,.secondary:hover,.download:hover{filter:brightness(1.08);transform:translateY(-1px)}input[type=file]{display:none}.status{min-height:23px;margin:12px 2px 0;color:var(--muted);font-size:.85rem}.status.error{color:var(--danger)}.status.success{color:#a7e5c0}.section-head{display:flex;align-items:center;justify-content:space-between;gap:15px;margin:34px 0 16px;flex-wrap:wrap}.section-head h3{margin:0;font-size:1.2rem}.tools{display:flex;gap:9px;align-items:center}.search{width:min(260px,48vw);padding:10px 13px;border-radius:10px;border:1px solid var(--border);background:#171224;color:var(--text);outline:none}.search:focus{border-color:var(--accent-dark)}.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:15px}.empty{grid-column:1/-1;padding:35px 15px;text-align:center;border:1px solid var(--border);border-radius:15px;color:var(--muted);background:#171224}.image-card{min-width:0;overflow:hidden;border-radius:15px;background:var(--panel-2);border:1px solid #493b63}.thumb{height:175px;display:grid;place-items:center;background:#100d19;overflow:hidden}.preview-button{display:block;width:100%;height:100%;padding:0;border:0;background:transparent;cursor:zoom-in}.thumb img{width:100%;height:100%;object-fit:contain;transition:transform .2s}.preview-button:hover img{transform:scale(1.035)}.card-info{padding:12px}.file-name{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:.9rem;font-weight:650}.date{color:var(--muted);font-size:.76rem;margin-top:5px}.download{width:100%;margin-top:11px;padding:9px}.footer{text-align:center;color:var(--muted);font-size:.8rem;line-height:1.6;margin:22px 8px 0}.lightbox{display:none;position:fixed;inset:0;z-index:1000;padding:24px;background:#080610ed;align-items:center;justify-content:center}.lightbox.open{display:flex}.lightbox-content{position:relative;width:min(100%,1100px);max-height:100%;display:flex;flex-direction:column;align-items:center;gap:12px}.lightbox-image{display:block;max-width:100%;max-height:calc(100vh - 120px);object-fit:contain;border-radius:12px}.lightbox-caption{max-width:90%;color:var(--text);text-align:center;overflow-wrap:anywhere}.lightbox-close{position:absolute;top:-17px;right:-10px;z-index:2;width:44px;height:44px;border:1px solid #ffffff55;border-radius:50%;color:white;background:#302641;font-size:27px}.chat-launcher{position:fixed;top:18px;left:18px;z-index:900;width:48px;height:48px;border:1px solid #78649b;border-radius:16px;background:linear-gradient(145deg,#e1d1ff,#9872d4);color:#211633;font-size:23px;box-shadow:0 8px 25px #9b75d744}.chat-panel{display:none;position:fixed;z-index:950;top:76px;left:18px;width:min(370px,calc(100vw - 36px));height:min(560px,calc(100vh - 100px));border:1px solid var(--border);border-radius:18px;background:#1a1529;box-shadow:0 20px 65px #0009;overflow:hidden;flex-direction:column}.chat-panel.open{display:flex}.chat-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);background:#241d36}.chat-head h3{margin:0;font-size:1rem}.chat-close{border:0;background:transparent;color:var(--text);font-size:25px}.chat-note{padding:9px 13px;color:var(--muted);font-size:.75rem;border-bottom:1px solid #3d315766}.chat-messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}.chat-message{padding:9px 11px;border:1px solid #493b63;border-radius:12px;background:#241d36;overflow-wrap:anywhere}.chat-message strong{font-size:.8rem;color:var(--accent)}.chat-message p{margin:4px 0 0;white-space:pre-wrap;font-size:.9rem}.chat-message time{display:block;margin-top:5px;color:var(--muted);font-size:.68rem}.chat-empty{margin:auto;text-align:center;color:var(--muted);font-size:.85rem}.chat-form{padding:12px;border-top:1px solid var(--border);display:grid;gap:8px}.chat-form input{width:100%;padding:10px 11px;border:1px solid var(--border);border-radius:9px;background:#171224;color:var(--text);outline:none}.chat-form-row{display:flex;gap:8px}.chat-form-row input{flex:1;min-width:0}.chat-form-row button{padding:0 15px}.chat-status{min-height:15px;color:var(--muted);font-size:.72rem}.modal-open{overflow:hidden}
+@media(max-width:600px){.shell{width:min(100% - 24px,1120px);padding-top:20px}header{margin-bottom:27px}.online{font-size:.75rem}.panel{padding:13px}.gallery{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.thumb{height:130px}.section-head{align-items:stretch}.tools{width:100%}.search{width:100%}.chat-launcher{top:12px;left:12px;width:43px;height:43px}.chat-panel{top:64px;left:12px}}
+</style>
+</head><body>
+<button class="chat-launcher" id="chatToggle" type="button" aria-label="Open community chat" title="Community chat">▤</button>
+<aside class="chat-panel" id="chatPanel" aria-label="Community chat">
+ <div class="chat-head"><h3>💬 Community chat</h3><button class="chat-close" id="chatClose" type="button" aria-label="Close chat">×</button></div>
+ <div class="chat-note">Messages are public and shared with everyone. Don't post personal information.</div>
+ <div class="chat-messages" id="chatMessages"><div class="chat-empty">Loading chat…</div></div>
+ <form class="chat-form" id="chatForm">
+  <input id="chatName" maxlength="24" placeholder="Your display name" aria-label="Your display name" required>
+  <div class="chat-form-row"><input id="chatText" maxlength="500" placeholder="Write a message…" aria-label="Write a message" required><button class="primary" type="submit">Send</button></div>
+  <div class="chat-status" id="chatStatus" aria-live="polite"></div>
+ </form>
+</aside>
+<main class="shell"><header><div class="brand"><div class="logo" aria-hidden="true">✧</div><div><h1>ImageDrop</h1><p>A little home for shared images</p></div></div><div class="online"><span class="dot"></span> Shared gallery</div></header>
+<section class="hero"><h2>Images worth <span>sharing.</span></h2><p>Upload an image and it can appear in the gallery for everyone to discover.</p></section>
+<section class="panel"><div class="drop" id="dropZone"><div class="drop-icon" aria-hidden="true">☁️</div><h3>Drop images here</h3><p>Choose image files from your device · Maximum 8 MB each</p><button class="primary" id="chooseButton" type="button">Choose images</button><input id="fileInput" type="file" accept="image/*" multiple></div><div class="status" id="status" role="status" aria-live="polite">Connect your Supabase project to start sharing.</div>
+<div class="section-head"><h3>Community gallery <span id="imageCount" style="color:var(--muted);font-size:.85rem;font-weight:400"></span></h3><div class="tools"><input class="search" id="searchInput" type="search" placeholder="Search image names…" aria-label="Search image names"><button class="secondary" id="refreshButton" type="button">↻ Refresh</button></div></div><div class="gallery" id="gallery"><div class="empty">Your shared images will appear here ✨</div></div></section>
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image preview"><div class="lightbox-content"><button class="lightbox-close" id="lightboxClose" type="button" aria-label="Close image preview">×</button><img class="lightbox-image" id="lightboxImage" alt=""><div class="lightbox-caption" id="lightboxCaption"></div></div></div>
+<p class="footer">Images are stored in your Supabase project. Only upload images you have permission to share.<br>Public gallery: uploaded images can be viewed by anyone.</p></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+// Replace these two values with your Supabase project URL and publishable key.
+const SUPABASE_URL="https://ahnkdsxjvseseleedvwx.supabase.co";
+const SUPABASE_ANON_KEY="sb_publishable_KW9o_6CMnDW4BzhPRRRjOg_PqZ2tZkt";
+const BUCKET_NAME="images",MAX_FILE_SIZE=8*1024*1024,MAX_CHAT_LENGTH=500;
+const $=id=>document.getElementById(id);const statusBox=$("status"),fileInput=$("fileInput"),dropZone=$("dropZone"),gallery=$("gallery"),imageCount=$("imageCount"),searchInput=$("searchInput");
+const lightbox=$("lightbox"),lightboxImage=$("lightboxImage"),lightboxCaption=$("lightboxCaption"),lightboxClose=$("lightboxClose");
+const chatPanel=$("chatPanel"),chatMessages=$("chatMessages"),chatStatus=$("chatStatus"),chatForm=$("chatForm"),chatName=$("chatName"),chatText=$("chatText");
+let supabaseClient=null,allImages=[],chatPoll=null;
+function setStatus(message,type=""){statusBox.textContent=message;statusBox.className="status"+(type?" "+type:"")}
+function isConfigured(){return SUPABASE_URL.startsWith("https://")&&!SUPABASE_URL.includes("YOUR_")&&SUPABASE_ANON_KEY.length>20&&!SUPABASE_ANON_KEY.includes("YOUR_")}
+function connectSupabase(){if(!window.supabase){setStatus("The Supabase library could not load. Check your internet connection.","error");return false}if(!isConfigured()){setStatus("Replace YOUR_SUPABASE_PROJECT_URL and YOUR_SUPABASE_PUBLISHABLE_KEY in this HTML file.","error");return false}supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);return true}
+function renderGallery(){const q=searchInput.value.trim().toLowerCase(),visible=allImages.filter(x=>(x.name||"").toLowerCase().includes(q));imageCount.textContent=`(${allImages.length})`;gallery.innerHTML="";if(!visible.length){gallery.innerHTML=`<div class="empty">${q?"No images match your search.":"No images yet. Be the first to upload one! ✨"}</div>`;return}visible.forEach(item=>{const card=document.createElement("article");card.className="image-card";const thumb=document.createElement("div");thumb.className="thumb";const preview=document.createElement("button");preview.className="preview-button";preview.type="button";preview.setAttribute("aria-label",`View ${item.name||"image"} larger`);const img=document.createElement("img");img.src=item.image_url;img.alt=item.name||"Shared image";img.loading="lazy";img.onerror=()=>{thumb.textContent="Preview unavailable"};preview.appendChild(img);preview.addEventListener("click",()=>openLightbox(item));thumb.appendChild(preview);const info=document.createElement("div");info.className="card-info";const name=document.createElement("div");name.className="file-name";name.textContent=item.name||"Untitled image";name.title=item.name||"";const date=document.createElement("div");date.className="date";date.textContent=item.created_at?new Date(item.created_at).toLocaleString():"Shared image";const dl=document.createElement("button");dl.className="download";dl.type="button";dl.textContent="⬇ Download";dl.addEventListener("click",()=>downloadImage(item.image_url,item.name));info.append(name,date,dl);card.append(thumb,info);gallery.appendChild(card)})}
+function openLightbox(item){lightboxImage.src=item.image_url;lightboxImage.alt=item.name||"Shared image";lightboxCaption.textContent=item.name||"Shared image";lightbox.classList.add("open");document.body.classList.add("modal-open");lightboxClose.focus()}function closeLightbox(){lightbox.classList.remove("open");document.body.classList.remove("modal-open");lightboxImage.removeAttribute("src")};lightboxClose.addEventListener("click",closeLightbox);lightbox.addEventListener("click",e=>{if(e.target===lightbox)closeLightbox()});document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeLightbox();closeChat()}});
+async function loadImages(){if(!supabaseClient&&!connectSupabase())return;setStatus("Loading the shared gallery…");const{data,error}=await supabaseClient.from("images").select("id,name,image_url,created_at").order("created_at",{ascending:false});if(error){console.error(error);setStatus("Could not load images: "+error.message,"error");return}allImages=data||[];renderGallery();setStatus(`Gallery loaded. ${allImages.length} image${allImages.length===1?"":"s"} available.`,"success")}
+async function uploadFiles(list){if(!supabaseClient&&!connectSupabase())return;const files=Array.from(list);if(!files.length)return;const valid=files.filter(f=>{if(!f.type.startsWith("image/")){setStatus(`${f.name} isn't an image file, so it was skipped.`,"error");return false}if(f.size>MAX_FILE_SIZE){setStatus(`${f.name} is larger than 8 MB, so it was skipped.`,"error");return false}return true});if(!valid.length)return;let uploaded=0;for(const file of valid){setStatus(`Uploading ${file.name} (${uploaded+1} of ${valid.length})…`);const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");const path=`${crypto.randomUUID()}-${safe}`;const{error:upErr}=await supabaseClient.storage.from(BUCKET_NAME).upload(path,file,{cacheControl:"3600",upsert:false,contentType:file.type});if(upErr){console.error(upErr);setStatus(`Upload failed for ${file.name}: ${upErr.message}`,"error");continue}const{data:pub}=supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(path);const{error:dbErr}=await supabaseClient.from("images").insert({name:file.name,image_url:pub.publicUrl});if(dbErr){console.error(dbErr);setStatus(`The file uploaded, but its gallery record could not be saved: ${dbErr.message}`,"error");continue}uploaded++}fileInput.value="";await loadImages();if(uploaded)setStatus(`Finished! ${uploaded} image${uploaded===1?"":"s"} uploaded successfully.`,"success")}
+async function downloadImage(url,filename){try{setStatus(`Preparing ${filename||"image"} for download…`);const r=await fetch(url);if(!r.ok)throw Error("The image could not be downloaded.");const blob=await r.blob(),obj=URL.createObjectURL(blob),a=document.createElement("a");a.href=obj;a.download=filename||"imagedrop-image";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(obj);setStatus("Download started.","success")}catch(e){console.error(e);window.open(url,"_blank","noopener");setStatus("Opened the image in a new tab. You can save it from there.","error")}}
+// Community chat: messages are stored in public.chat_messages and refreshed for all visitors.
+function openChat(){chatPanel.classList.add("open");loadChat();if(!chatPoll)chatPoll=setInterval(loadChat,4000)}function closeChat(){chatPanel.classList.remove("open");if(chatPoll){clearInterval(chatPoll);chatPoll=null}}$("chatToggle").addEventListener("click",()=>chatPanel.classList.contains("open")?closeChat():openChat());$("chatClose").addEventListener("click",closeChat);
+chatName.value=localStorage.getItem("imagedrop-chat-name")||"";chatName.addEventListener("change",()=>localStorage.setItem("imagedrop-chat-name",chatName.value.trim().slice(0,24)));
+async function loadChat(){if(!supabaseClient&&!connectSupabase()){chatMessages.innerHTML='<div class="chat-empty">Add your Supabase URL and publishable key to enable chat.</div>';return}const{data,error}=await supabaseClient.from("chat_messages").select("id,username,message,created_at").order("created_at",{ascending:true}).limit(100);if(error){console.error(error);chatMessages.innerHTML='<div class="chat-empty">Could not load chat. Check the chat_messages table and its policies in Supabase.</div>';return}const oldScroll=chatMessages.scrollTop,nearBottom=chatMessages.scrollHeight-chatMessages.clientHeight-oldScroll<70;chatMessages.innerHTML="";if(!data?.length){chatMessages.innerHTML='<div class="chat-empty">No messages yet. Start the conversation ✨</div>';return}data.forEach(m=>{const box=document.createElement("article");box.className="chat-message";const who=document.createElement("strong");who.textContent=m.username||"Guest";const msg=document.createElement("p");msg.textContent=m.message;const time=document.createElement("time");time.textContent=m.created_at?new Date(m.created_at).toLocaleString():"";box.append(who,msg,time);chatMessages.appendChild(box)});if(nearBottom)chatMessages.scrollTop=chatMessages.scrollHeight}
+chatForm.addEventListener("submit",async e=>{e.preventDefault();if(!supabaseClient&&!connectSupabase())return;const username=chatName.value.trim().slice(0,24),message=chatText.value.trim();if(!username||!message)return;if(message.length>MAX_CHAT_LENGTH){chatStatus.textContent="Messages must be 500 characters or fewer.";return}chatStatus.textContent="Sending…";const{error}=await supabaseClient.from("chat_messages").insert({username,message});if(error){console.error(error);chatStatus.textContent="Could not send: "+error.message;return}localStorage.setItem("imagedrop-chat-name",username);chatText.value="";chatStatus.textContent="Sent!";await loadChat()});
+$("chooseButton").addEventListener("click",()=>fileInput.click());fileInput.addEventListener("change",e=>uploadFiles(e.target.files));$("refreshButton").addEventListener("click",loadImages);searchInput.addEventListener("input",renderGallery);["dragenter","dragover"].forEach(n=>dropZone.addEventListener(n,e=>{e.preventDefault();dropZone.classList.add("dragging")}));["dragleave","drop"].forEach(n=>dropZone.addEventListener(n,e=>{e.preventDefault();dropZone.classList.remove("dragging")}));dropZone.addEventListener("drop",e=>uploadFiles(e.dataTransfer.files));if(connectSupabase()){loadImages();}
+</script></body></html>
